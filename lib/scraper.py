@@ -131,3 +131,53 @@ def fetch_page_text(url: str) -> Optional[str]:
 def fetch_page_meta(url: str) -> Dict:
     """ページのメタ情報を取得（同期版）"""
     return _run_async(_fetch_page_meta(url))
+
+
+# ── PDFリンク収集 ──────────────────────────────
+
+async def _find_pdf_links(url: str) -> List[Dict]:
+    """ページ内のPDFリンクを収集"""
+    async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True, timeout=30) as client:
+        try:
+            resp = await client.get(url)
+            resp.raise_for_status()
+        except Exception:
+            return []
+
+    soup = BeautifulSoup(resp.text, "lxml")
+    pdf_links = []
+    seen = set()
+
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+
+        # 相対URLを絶対URLに変換
+        if href.startswith("/"):
+            from urllib.parse import urljoin
+            href = urljoin(url, href)
+
+        if not href.startswith("http"):
+            continue
+
+        # PDF判定（URL末尾 or リンクテキストに「資料」「PDF」を含む）
+        link_text = a.get_text(strip=True)
+        is_pdf = (
+            href.lower().endswith(".pdf")
+            or "pdf" in href.lower()
+            or any(kw in link_text for kw in ["資料", "PDF", "パンフ", "ダウンロード", "会社案内"])
+        )
+
+        if is_pdf and href not in seen:
+            seen.add(href)
+            pdf_links.append({
+                "url": href,
+                "title": link_text or href.split("/")[-1],
+                "type": "material",
+            })
+
+    return pdf_links
+
+
+def find_pdf_links(url: str) -> List[Dict]:
+    """ページ内のPDFリンクを収集（同期版）"""
+    return _run_async(_find_pdf_links(url))
