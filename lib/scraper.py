@@ -16,6 +16,56 @@ HEADERS = {
 
 # ── 非同期版（内部） ──────────────────────────────────
 
+async def _duckduckgo_search(query: str, max_results: int = 10) -> List[Dict]:
+    """DuckDuckGo HTML検索（クラウドサーバーからでも使える）"""
+    from urllib.parse import quote_plus, urljoin
+    encoded_query = quote_plus(query)
+    url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
+
+    async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True, timeout=30) as client:
+        try:
+            resp = await client.get(url)
+            resp.raise_for_status()
+        except Exception as e:
+            return [{"error": str(e)}]
+
+    soup = BeautifulSoup(resp.text, "lxml")
+    results = []
+
+    for item in soup.select(".result"):
+        title_el = item.select_one(".result__title a, .result__a")
+        snippet_el = item.select_one(".result__snippet")
+
+        if not title_el:
+            continue
+
+        href = title_el.get("href", "")
+        # DuckDuckGoのリダイレクトURLを処理
+        if "duckduckgo.com" in href and "uddg=" in href:
+            from urllib.parse import parse_qs, urlparse
+            parsed = urlparse(href)
+            params = parse_qs(parsed.query)
+            if "uddg" in params:
+                href = params["uddg"][0]
+
+        if not href.startswith("http"):
+            continue
+
+        if "duckduckgo.com" in href:
+            continue
+
+        results.append({
+            "title": title_el.get_text(strip=True),
+            "url": href,
+            "snippet": snippet_el.get_text(strip=True) if snippet_el else None,
+        })
+
+        if len(results) >= max_results:
+            break
+
+    return results
+
+
 async def _google_search(query: str, max_results: int = 10) -> List[Dict]:
     encoded_query = query.replace(" ", "+")
     url = f"https://www.google.com/search?q={encoded_query}&num={max_results}&hl=ja"
@@ -58,6 +108,16 @@ async def _google_search(query: str, max_results: int = 10) -> List[Dict]:
             break
 
     return results
+
+
+async def _web_search(query: str, max_results: int = 10) -> List[Dict]:
+    """Google → DuckDuckGo のフォールバック検索"""
+    results = await _google_search(query, max_results)
+    valid = [r for r in results if "error" not in r and r.get("url")]
+    if valid:
+        return valid
+    # Googleがブロックされた場合、DuckDuckGoにフォールバック
+    return await _duckduckgo_search(query, max_results)
 
 
 async def _fetch_page_text(url: str) -> Optional[str]:
@@ -121,6 +181,11 @@ def _run_async(coro):
 def google_search(query: str, max_results: int = 10) -> List[Dict]:
     """Google検索結果をスクレイピング（同期版）"""
     return _run_async(_google_search(query, max_results))
+
+
+def web_search(query: str, max_results: int = 10) -> List[Dict]:
+    """Web検索（Google→DuckDuckGoフォールバック、同期版）"""
+    return _run_async(_web_search(query, max_results))
 
 
 def fetch_page_text(url: str) -> Optional[str]:

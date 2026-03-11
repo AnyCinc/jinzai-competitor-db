@@ -5,7 +5,7 @@ from datetime import datetime
 from lib.database import init_db, get_db
 from lib.models import Company, CompanyLink
 from lib.style import inject_custom_css, render_strength_tags, render_weakness_tags
-from lib.scraper import google_search, fetch_page_text, find_pdf_links
+from lib.scraper import web_search, fetch_page_text, find_pdf_links
 from lib.ai_analyzer import analyze_company_page
 
 st.set_page_config(page_title="自動収集 | 競合調査DB", page_icon="🤖", layout="wide")
@@ -78,7 +78,7 @@ with tab_search:
         for ki, keyword in enumerate(selected_keywords):
             status_text.markdown(f"🔍 **検索中**: {keyword} ({ki+1}/{total_keywords})")
 
-            search_results = google_search(keyword, per_keyword)
+            search_results = web_search(keyword, per_keyword)
             valid_results = [r for r in search_results if r.get("url") and "error" not in r]
 
             for ri, item in enumerate(valid_results):
