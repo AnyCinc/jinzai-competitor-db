@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Noto+Sans+JP:wght@300;400;500&family=Montserrat:wght@300;400;500;600&display=swap');
+
+/* ================================================================
+   Light-theme color tokens
+   ================================================================ */
+:root {
+  --bg-base:   #faf9f7;   /* warm off-white    */
+  --bg-panel:  #f2f1ee;   /* sidebar / cards   */
+  --bg-hover:  #eae9e5;   /* hover states      */
+  --bg-active: #ffffff;   /* selected / inputs */
+  --border:    #e2e0db;   /* normal borders    */
+  --border-lt: #ececea;   /* lighter borders   */
+  --text-pri:  #1c1c1a;   /* primary text      */
+  --text-sec:  #6b6a65;   /* secondary text    */
+  --text-dim:  #a5a39d;   /* dimmed / labels   */
+  --text-mute: #c8c6c0;   /* very faint        */
+  --accent:    #2c2c2a;   /* buttons / accents */
+}
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    background: var(--bg-base);
+    color: var(--text-pri);
+    font-family: 'Noto Sans JP', 'Montserrat', sans-serif;
+    font-weight: 300;
+  }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d5d3ce; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #b5b3ae; }
+}
+
+@layer components {
+  .btn {
+    @apply px-5 py-2.5 text-xs font-medium tracking-widest uppercase transition-all duration-300 cursor-pointer inline-flex items-center gap-2;
+  }
+  .btn-primary {
+    @apply btn disabled:cursor-not-allowed;
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #444; }
+  .btn-primary:disabled { background: #ccc; color: #999; }
+
+  .btn-secondary {
+    @apply btn bg-transparent;
+    border: 1px solid var(--border);
+    color: var(--text-sec);
+  }
+  .btn-secondary:hover { border-color: #aaa; color: var(--text-pri); }
+
+  .btn-danger {
+    @apply btn bg-transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .btn-danger:hover { border-color: #e88; color: #c44; }
+
+  .btn-ghost {
+    @apply btn bg-transparent px-2;
+    color: var(--text-dim);
+  }
+  .btn-ghost:hover { color: var(--text-pri); }
+
+  .card {
+    background: var(--bg-active);
+    border: 1px solid var(--border);
+    @apply p-5 transition-colors duration-300;
+  }
+  .card-hover {
+    @apply card;
+  }
+  .card-hover:hover { border-color: #bbb; }
+
+  .input {
+    @apply w-full px-4 py-3 text-sm transition-colors duration-200;
+    background: var(--bg-active);
+    border: 1px solid var(--border);
+    color: var(--text-pri);
+  }
+  .input::placeholder { color: var(--text-mute); }
+  .input:focus { outline: none; border-color: #aaa; }
+
+  .input-label {
+    @apply text-xs tracking-widest uppercase block mb-2;
+    color: var(--text-dim);
+  }
+
+  .tag-strength {
+    @apply inline-flex items-center gap-1 text-xs px-3 py-1 tracking-wide;
+    border: 1px solid #c2d4b8;
+    color: #4a6b3a;
+    background: #f3f8f0;
+  }
+  .tag-weakness {
+    @apply inline-flex items-center gap-1 text-xs px-3 py-1 tracking-wide;
+    border: 1px solid #e0cdb8;
+    color: #8b6f4e;
+    background: #faf5ef;
+  }
+
+  .section-title {
+    @apply text-xs tracking-widest uppercase mb-4;
+    color: var(--text-dim);
+  }
+  .divider {
+    border-top: 1px solid var(--border-lt);
+    @apply my-5;
+  }
+
+  .serif {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+  }
+}
+
+/* ── Animations ──────────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.35s ease forwards; }
+
+/* Book open — page turns open from right */
+@keyframes bookOpen {
+  from {
+    opacity: 0;
+    transform: translateX(32px) scaleX(0.98);
+    transform-origin: left center;
+    filter: blur(3px);
+  }
+  60% { filter: blur(0); }
+  to {
+    opacity: 1;
+    transform: translateX(0) scaleX(1);
+    filter: blur(0);
+  }
+}
+.book-open {
+  animation: bookOpen 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Sidebar binding glow on select */
+@keyframes bindingAppear {
+  from { opacity: 0; transform: scaleY(0.6); }
+  to   { opacity: 1; transform: scaleY(1); }
+}
+.binding-appear {
+  animation: bindingAppear 0.25s ease forwards;
+}
+
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+}
