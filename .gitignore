@@ -9,6 +9,7 @@ node_modules/
 
 # Database (ローカル開発用)
 *.sqlite3
+data/
 
 # Uploads (ローカル開発用)
 uploads/
@@ -16,6 +17,7 @@ uploads/
 # Environment
 .env
 .env.local
+.streamlit/secrets.toml
 
 # IDE
 .vscode/
@@ -27,3 +29,6 @@ Thumbs.db
 
 # Build
 frontend/dist/
+
+# Claude
+.claude/
