@@ -41,5 +41,10 @@ def get_db():
 
 
 def init_db():
+    # SQLite の場合、ディレクトリを事前に作成
+    url = get_database_url()
+    if "sqlite" in url:
+        db_path = url.replace("sqlite:///", "")
+        os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
