@@ -4,8 +4,11 @@ from datetime import datetime
 from lib.database import init_db, get_db
 from lib.models import Company
 from lib.style import inject_custom_css
+from lib.auth import check_auth
 
 st.set_page_config(page_title="会社一覧 | 競合調査DB", page_icon="📋", layout="wide")
+if not check_auth():
+    st.stop()
 init_db()
 inject_custom_css()
 

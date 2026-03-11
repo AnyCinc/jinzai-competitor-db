@@ -7,8 +7,11 @@ from lib.database import init_db, get_db
 from lib.models import Company, CompanyLink
 from lib.style import inject_custom_css, render_strength_tags, render_weakness_tags
 from lib.scraper import web_search, fetch_page_text, fetch_page_meta, find_pdf_links
+from lib.auth import check_auth
 
 st.set_page_config(page_title="自動収集 | 競合調査DB", page_icon="🤖", layout="wide")
+if not check_auth():
+    st.stop()
 init_db()
 inject_custom_css()
 

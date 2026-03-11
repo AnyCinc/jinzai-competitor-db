@@ -6,8 +6,11 @@ from lib.models import Company, SearchLog
 from lib.style import inject_custom_css, render_strength_tags, render_weakness_tags
 from lib.scraper import web_search, fetch_page_text
 from lib.ai_analyzer import analyze_company_page
+from lib.auth import check_auth
 
 st.set_page_config(page_title="Web検索 | 競合調査DB", page_icon="🌐", layout="wide")
+if not check_auth():
+    st.stop()
 init_db()
 inject_custom_css()
 

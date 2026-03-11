@@ -2,6 +2,7 @@ import streamlit as st
 from lib.database import init_db, get_db
 from lib.models import Company
 from lib.style import inject_custom_css
+from lib.auth import check_auth
 
 # ── ページ設定 ─────────────────────────────────
 st.set_page_config(
@@ -10,6 +11,10 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ── 認証チェック ──────────────────────────────────
+if not check_auth():
+    st.stop()
 
 # ── DB初期化 & CSS注入 ──────────────────────────
 init_db()

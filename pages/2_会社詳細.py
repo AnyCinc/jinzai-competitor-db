@@ -8,8 +8,11 @@ from lib.models import Company, CompanyFile, CompanyLink
 from lib.style import inject_custom_css, render_strength_tags, render_weakness_tags, render_industry_badge
 from lib.ai_analyzer import analyze_company_page
 from lib.scraper import fetch_page_text
+from lib.auth import check_auth
 
 st.set_page_config(page_title="会社詳細 | 競合調査DB", page_icon="🔍", layout="wide")
+if not check_auth():
+    st.stop()
 init_db()
 inject_custom_css()
 
