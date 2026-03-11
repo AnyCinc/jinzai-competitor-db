@@ -1,0 +1,1 @@
+# jinzai-competitor-db
