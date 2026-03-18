@@ -87,114 +87,149 @@ def _filter_company_results(results: List[Dict]) -> List[Dict]:
 
 
 def extract_company_name(title: str, url: str = "", description: str = "") -> str:
-    """ページタイトルやメタ情報から会社名を抽出する"""
+    """ページタイトルやメタ情報から会社名を抽出する
+
+    例:
+      "Home ｜ 外国人材紹介・キャリア支援の株式会社WILSONウイルソン公式サイト"
+        → "株式会社WILSON"
+      "外国人の人材紹介ならかいじ人材株式会社 | 海外の若者と企業の未来を繋ぐ"
+        → "かいじ人材株式会社"
+      "グローバルパワー｜外国人紹介・派遣 日本語N1/N2 社会人・中途特化"
+        → "グローバルパワー"
+      "ORIGINATOR CO., LTD. – グローバル人材紹介のオリジネーター"
+        → "ORIGINATOR CO., LTD."
+    """
     import re
 
     if not title:
         return ""
 
-    # 全角・半角スペースを統一
     title = title.replace("\u3000", " ").strip()
 
-    # ── 1. 「株式会社」「有限会社」「合同会社」パターンで抽出 ──
-    # 前株: 株式会社〇〇
-    corp_prefixes = ["株式会社", "有限会社", "合同会社", "一般社団法人", "一般財団法人"]
-    for prefix in corp_prefixes:
-        # 前株パターン: 株式会社ABC
-        pattern = prefix + r'[A-Za-zぁ-んァ-ヶー一-龥Ａ-Ｚａ-ｚ０-９\w]+'
-        match = re.search(pattern, title)
-        if match:
-            return match.group(0).strip()
+    corp_types = ["株式会社", "有限会社", "合同会社", "一般社団法人", "一般財団法人", "協同組合"]
 
-        # 後株パターン: ABC株式会社
-        pattern = r'[A-Za-zぁ-んァ-ヶー一-龥Ａ-Ｚａ-ｚ０-９\w]+' + prefix
-        match = re.search(pattern, title)
-        if match:
-            return match.group(0).strip()
-
-    # ── 2. descriptionからも株式会社パターンを探す ──
-    if description:
-        desc_clean = description.replace("\u3000", " ")
-        for prefix in corp_prefixes:
-            pattern = prefix + r'[A-Za-zぁ-んァ-ヶー一-龥Ａ-Ｚａ-ｚ０-９\w]+'
-            match = re.search(pattern, desc_clean)
-            if match:
-                return match.group(0).strip()
-
-            pattern = r'[A-Za-zぁ-んァ-ヶー一-龥Ａ-Ｚａ-ｚ０-９\w]+' + prefix
-            match = re.search(pattern, desc_clean)
-            if match:
-                return match.group(0).strip()
-
-    # ── 3. タイトルを区切り文字で分割して最も短い意味のある部分を取る ──
-    # 「Home ｜ 外国人材紹介の株式会社ABC公式サイト」→ 分割して探す
-    separators = ['｜', '|', '–', '—', '-', '/', '：', ':']
+    # ── 0. まず区切り文字で分割（/はURL等を壊すので除外） ──
+    separators = ['｜', '|', '–', '—', '：', ':']
     parts = [title]
     for sep in separators:
         new_parts = []
         for p in parts:
             new_parts.extend(p.split(sep))
         parts = new_parts
-
     parts = [p.strip() for p in parts if p.strip()]
 
-    # 不要なキーワードを除去
     noise_words = [
         "公式サイト", "公式ホームページ", "公式HP", "公式",
         "ホームページ", "オフィシャルサイト", "OFFICIAL SITE",
-        "Official Site", "Home", "TOP", "トップページ", "トップ",
-        "外国人材紹介", "人材紹介", "人材派遣", "技能実習",
-        "特定技能", "グローバル人材",
+        "Official Site", "Corporate Site", "Corp Site", "Home", "TOP",
+        "トップページ", "トップ",
     ]
 
-    # 各パーツからnoiseを除去して会社名らしい部分を見つける
+    def _clean(text):
+        """ノイズ除去"""
+        for n in noise_words:
+            text = text.replace(n, "")
+        return text.strip(" 　・-–—/|｜：:の")
+
+    def _extract_corp_from_text(text):
+        """テキストから「〇〇株式会社」or「株式会社〇〇」を短く正確に抽出"""
+        for ct in corp_types:
+            idx = text.find(ct)
+            if idx == -1:
+                continue
+
+            # ── 前株: 株式会社〇〇 ──
+            after = text[idx + len(ct):]
+            # 株式会社の直後の名前部分を取る（公式/サイト等で止める）
+            m = re.match(r'([A-Za-zぁ-んァ-ヶー一-龥Ａ-Ｚａ-ｚ０-９\w]+)', after)
+            if m:
+                name_part = m.group(1)
+                name_part = re.split(r'(?:公式|サイト|ホーム|のご|への|です|ます)', name_part)[0]
+                if name_part and len(name_part) >= 1:
+                    return ct + name_part
+
+            # ── 後株: 〇〇株式会社 ──
+            before = text[:idx]
+            if before:
+                # 助詞や句読点で分割して、最後の部分を会社名として取る
+                # 「外国人の人材紹介ならかいじ人材」→「かいじ人材」
+                parts_b = re.split(r'[のはをにでがもとならへ、。\s｜|,・]', before)
+                parts_b = [p for p in parts_b if p]
+                if parts_b:
+                    name_part = parts_b[-1]
+                    if len(name_part) >= 2:
+                        return name_part + ct
+                # 区切りが見つからない（短い文字列）ならそのまま
+                if len(before) <= 15:
+                    name_part = re.sub(r'^[\s・、,]+', '', before)
+                    if name_part:
+                        return name_part + ct
+
+        return None
+
+    # ── 1. 各パーツから株式会社パターンを探す ──
+    for part in parts:
+        result = _extract_corp_from_text(part)
+        if result:
+            return _clean(result)
+
+    # ── 2. descriptionからも探す ──
+    if description:
+        result = _extract_corp_from_text(description.replace("\u3000", " "))
+        if result:
+            return _clean(result)
+
+    # ── 3. CO., LTD. / Inc. / Corp. パターン ──
+    for part in parts:
+        m = re.search(r'([A-Za-z\s]+(?:CO\.?,?\s*LTD\.?|Inc\.?|Corp\.(?!orat)|LLC))', part, re.IGNORECASE)
+        if m:
+            name = m.group(1).strip()
+            # "Corporate Site" 等を含まないようにする
+            name = re.sub(r'\s*Corporate\s*Site\s*$', '', name, flags=re.IGNORECASE).strip()
+            if name:
+                return name
+
+    # ── 4. パーツをクリーニングして最も会社名らしいものを返す ──
+    # さらに「外国人材紹介」等の業種ワードも除去
+    biz_noise = [
+        "外国人材紹介", "人材紹介", "人材派遣", "技能実習",
+        "特定技能", "グローバル人材", "外国人紹介", "派遣",
+        "登録支援機関", "監理団体", "キャリア支援",
+        "日本語N1/N2", "社会人・中途特化",
+        "海外の若者と企業の未来を繋ぐ",
+    ]
+
     cleaned_parts = []
     for part in parts:
-        cleaned = part
-        for noise in noise_words:
-            cleaned = cleaned.replace(noise, "")
-        cleaned = re.sub(r'[\s・]+$', '', cleaned)
-        cleaned = re.sub(r'^[\s・]+', '', cleaned)
-        if cleaned and len(cleaned) >= 2:
+        cleaned = _clean(part)
+        for bn in biz_noise:
+            cleaned = cleaned.replace(bn, "")
+        cleaned = re.sub(r'^[\s・、,]+', '', cleaned)
+        cleaned = re.sub(r'[\s・、,]+$', '', cleaned)
+        if cleaned and 2 <= len(cleaned) <= 30:
             cleaned_parts.append(cleaned)
 
-    # パーツの中から最も会社名らしいものを選ぶ
-    # 株式会社を含むパーツを優先
-    for part in parts:
-        for prefix in corp_prefixes:
-            if prefix in part:
-                # このパーツからnoiseを除去
-                cleaned = part
-                for noise in ["公式サイト", "公式ホームページ", "公式HP", "公式",
-                              "ホームページ", "オフィシャルサイト"]:
-                    cleaned = cleaned.replace(noise, "")
-                cleaned = cleaned.strip(" ・-–—/|｜：:")
-                if cleaned:
-                    return cleaned
-
-    # 「CO., LTD.」「Co.,Ltd.」「Inc.」パターン
-    for part in parts:
-        if re.search(r'(?:co\.?,?\s*ltd\.?|inc\.?|corp\.?|LLC)', part, re.IGNORECASE):
-            cleaned = part
-            for noise in ["公式サイト", "公式", "ホームページ"]:
-                cleaned = cleaned.replace(noise, "")
-            cleaned = cleaned.strip(" ・-–—/|｜：:")
-            if cleaned:
-                return cleaned
-
-    # ── 4. 最後の手段: クリーニングしたパーツで最も適切なものを返す ──
     if cleaned_parts:
-        # 短すぎず長すぎないパーツを選ぶ（2〜30文字）
-        good_parts = [p for p in cleaned_parts if 2 <= len(p) <= 30]
-        if good_parts:
-            return good_parts[0]
+        # 短すぎるもの（3文字未満）や数字だけのものを除外
+        good = [p for p in cleaned_parts if len(p) >= 3 and not re.match(r'^[A-Z0-9]{1,3}$', p)]
+        if not good:
+            good = cleaned_parts
+        # 短いものが会社名の可能性が高い（ブランド名）
+        good.sort(key=len)
+        return good[0]
 
-    # それでもダメならタイトルを区切って最初の意味ある部分
-    if parts and len(parts[0]) <= 40:
-        return parts[0]
+    # ── 5. URLからドメイン名を抽出 ──
+    if url:
+        from urllib.parse import urlparse
+        domain = urlparse(url).netloc.replace("www.", "")
+        domain_name = domain.split(".")[0]
+        if domain_name and len(domain_name) >= 2:
+            return domain_name.upper()
 
-    # 最終手段: タイトルの最初の40文字
-    return title[:40]
+    # 最終手段
+    if parts:
+        return _clean(parts[0])[:30] or parts[0][:30]
+    return title[:30]
 
 
 # ── 非同期版（内部） ──────────────────────────────────
