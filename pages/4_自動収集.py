@@ -6,7 +6,7 @@ from datetime import datetime
 from lib.database import init_db, get_db
 from lib.models import Company, CompanyLink
 from lib.style import inject_custom_css, render_strength_tags, render_weakness_tags
-from lib.scraper import web_search, fetch_page_text, fetch_page_meta, find_pdf_links
+from lib.scraper import web_search, fetch_page_text, fetch_page_meta, find_pdf_links, extract_company_name
 from lib.auth import check_auth
 
 st.set_page_config(page_title="自動収集 | 競合調査DB", page_icon="🤖", layout="wide")
@@ -118,8 +118,10 @@ with tab_search:
                     total_skipped += 1
                     continue
 
-                company_name = item.get("title", "")
-                description = item.get("snippet", "")
+                raw_title = item.get("title", "")
+                raw_snippet = item.get("snippet", "")
+                company_name = extract_company_name(raw_title, item["url"], raw_snippet)
+                description = raw_snippet
                 industry = None
                 strengths_json = "[]"
                 weaknesses_json = "[]"
@@ -141,12 +143,14 @@ with tab_search:
                         except Exception as e:
                             pass  # AI分析失敗でも登録は続行
                 else:
-                    # AI分析なしの場合、ページメタ情報を取得
+                    # AI分析なしの場合、ページメタ情報を取得して会社名を再抽出
                     status_text.markdown(f"📝 **情報取得中**: {company_name[:40]}")
                     meta = fetch_page_meta(item["url"])
                     if meta and not meta.get("error"):
                         if meta.get("title"):
-                            company_name = meta["title"]
+                            company_name = extract_company_name(
+                                meta["title"], item["url"], meta.get("description", "")
+                            )
                         if meta.get("description"):
                             description = meta["description"]
 

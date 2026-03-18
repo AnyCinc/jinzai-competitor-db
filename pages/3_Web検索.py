@@ -4,7 +4,7 @@ from datetime import datetime
 from lib.database import init_db, get_db
 from lib.models import Company, SearchLog
 from lib.style import inject_custom_css, render_strength_tags, render_weakness_tags
-from lib.scraper import web_search, fetch_page_text
+from lib.scraper import web_search, fetch_page_text, extract_company_name
 from lib.ai_analyzer import analyze_company_page
 from lib.auth import check_auth
 
@@ -117,7 +117,7 @@ if results:
                     analysis = analyses.get(i, {})
                     with get_db() as db:
                         new_company = Company(
-                            name=analysis.get("company_name") or item.get("title", ""),
+                            name=analysis.get("company_name") or extract_company_name(item.get("title", ""), item["url"], item.get("snippet", "")),
                             hp_url=item["url"],
                             description=analysis.get("summary") or item.get("snippet"),
                             strengths=json.dumps(analysis.get("strengths", []), ensure_ascii=False),
