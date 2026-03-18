@@ -13,6 +13,78 @@ HEADERS = {
     "Accept-Language": "ja,en;q=0.9",
 }
 
+# ── 記事・ニュースサイト除外リスト ──
+EXCLUDED_DOMAINS = {
+    "news.yahoo.co.jp", "yahoo.co.jp", "news.google.com",
+    "youtube.com", "youtu.be", "twitter.com", "x.com",
+    "facebook.com", "instagram.com", "tiktok.com", "linkedin.com",
+    "note.com", "zenn.dev", "qiita.com", "hatena.ne.jp", "hatenablog.com",
+    "ameblo.jp", "livedoor.jp", "fc2.com", "seesaa.net",
+    "wikipedia.org", "wikiwand.com",
+    "amazon.co.jp", "amazon.com", "rakuten.co.jp",
+    "nikkei.com", "asahi.com", "mainichi.jp", "yomiuri.co.jp",
+    "sankei.com", "nhk.or.jp", "reuters.com", "bloomberg.co.jp",
+    "prtimes.jp", "atpress.ne.jp",
+    "recruit.co.jp", "indeed.com", "doda.jp", "mynavi.jp",
+    "rikunabi.com", "en-japan.com", "careerjet.jp",
+    "townwork.net", "baitoru.com",
+    "matome.naver.jp",
+    "slideshare.net", "speakerdeck.com",
+    "google.com", "google.co.jp",
+}
+
+# 記事っぽいURLパターン
+ARTICLE_URL_PATTERNS = [
+    "/article/", "/articles/", "/news/", "/blog/", "/column/",
+    "/post/", "/entry/", "/archive/", "/tag/", "/category/",
+    "/topics/", "/magazine/", "/media/", "/story/", "/report/",
+    "/press/", "/release/", "/interview/",
+]
+
+
+def _is_company_site(url: str, title: str = "", snippet: str = "") -> bool:
+    """URLが企業の公式サイトらしいかどうかを判定"""
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    domain = parsed.netloc.lower().replace("www.", "")
+
+    # 除外ドメインチェック
+    for exc in EXCLUDED_DOMAINS:
+        if domain == exc or domain.endswith("." + exc):
+            return False
+
+    # 記事っぽいURLパスを除外
+    path = parsed.path.lower()
+    for pattern in ARTICLE_URL_PATTERNS:
+        if pattern in path:
+            return False
+
+    # URLにページ番号パターン（/page/2 など）がある場合は除外
+    if "/page/" in path:
+        return False
+
+    # タイトルに記事っぽいキーワードが含まれる場合は除外
+    article_keywords = [
+        "ランキング", "まとめ", "比較サイト", "おすすめ", "選び方",
+        "口コミ", "評判", "ニュース", "コラム", "ブログ",
+        "【最新", "TOP", "選", "徹底比較",
+    ]
+    title_lower = title.lower()
+    for kw in article_keywords:
+        if kw.lower() in title_lower:
+            return False
+
+    return True
+
+
+def _filter_company_results(results: List[Dict]) -> List[Dict]:
+    """検索結果から企業サイトだけを抽出"""
+    return [
+        r for r in results
+        if r.get("url") and "error" not in r
+        and _is_company_site(r["url"], r.get("title", ""), r.get("snippet", ""))
+    ]
+
 
 # ── 非同期版（内部） ──────────────────────────────────
 
@@ -110,14 +182,22 @@ async def _google_search(query: str, max_results: int = 10) -> List[Dict]:
     return results
 
 
-async def _web_search(query: str, max_results: int = 10) -> List[Dict]:
-    """Google → DuckDuckGo のフォールバック検索"""
-    results = await _google_search(query, max_results)
+async def _web_search(query: str, max_results: int = 10, filter_companies: bool = True) -> List[Dict]:
+    """Google → DuckDuckGo のフォールバック検索（企業サイトフィルタリング付き）"""
+    # 多めに取得してフィルター後に必要数を確保
+    fetch_count = max_results * 3 if filter_companies else max_results
+
+    results = await _google_search(query, fetch_count)
     valid = [r for r in results if "error" not in r and r.get("url")]
-    if valid:
-        return valid
-    # Googleがブロックされた場合、DuckDuckGoにフォールバック
-    return await _duckduckgo_search(query, max_results)
+    if not valid:
+        # Googleがブロックされた場合、DuckDuckGoにフォールバック
+        results = await _duckduckgo_search(query, fetch_count)
+        valid = [r for r in results if "error" not in r and r.get("url")]
+
+    if filter_companies:
+        valid = _filter_company_results(valid)
+
+    return valid[:max_results]
 
 
 async def _fetch_page_text(url: str) -> Optional[str]:
@@ -183,9 +263,9 @@ def google_search(query: str, max_results: int = 10) -> List[Dict]:
     return _run_async(_google_search(query, max_results))
 
 
-def web_search(query: str, max_results: int = 10) -> List[Dict]:
+def web_search(query: str, max_results: int = 10, filter_companies: bool = True) -> List[Dict]:
     """Web検索（Google→DuckDuckGoフォールバック、同期版）"""
-    return _run_async(_web_search(query, max_results))
+    return _run_async(_web_search(query, max_results, filter_companies))
 
 
 def fetch_page_text(url: str) -> Optional[str]:
