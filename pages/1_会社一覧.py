@@ -69,6 +69,44 @@ with st.expander("➕ 新しい会社を追加", expanded=False):
                 st.rerun()
 
 # ═══════════════════════════════════════════════════
+# 会社名一括修正
+# ═══════════════════════════════════════════════════
+with st.expander("🔄 会社名を一括修正（ページタイトル → 正しい会社名）", expanded=False):
+    st.caption("ページタイトルがそのまま会社名になっている場合、自動で正しい会社名に変換します。")
+    if st.button("プレビュー（変更前 → 変更後を確認）", key="preview_rename"):
+        from lib.scraper import extract_company_name
+        with get_db() as db:
+            all_companies = db.query(Company).order_by(Company.name).all()
+            rename_list = []
+            for c in all_companies:
+                new_name = extract_company_name(c.name, c.hp_url or "", c.description or "")
+                if new_name and new_name != c.name and len(new_name) < len(c.name):
+                    rename_list.append((c.id, c.name, new_name))
+
+        if rename_list:
+            st.session_state["rename_list"] = rename_list
+            for cid, old, new in rename_list:
+                st.markdown(f"- **{old}**  →  **{new}**")
+        else:
+            st.info("修正が必要な会社名はありません。")
+            st.session_state.pop("rename_list", None)
+
+    if st.session_state.get("rename_list"):
+        if st.button("✅ すべて適用する", key="apply_rename", type="primary"):
+            with get_db() as db:
+                count = 0
+                for cid, old, new in st.session_state["rename_list"]:
+                    c = db.query(Company).filter(Company.id == cid).first()
+                    if c and c.name == old:
+                        c.name = new
+                        c.updated_at = datetime.utcnow()
+                        count += 1
+                db.commit()
+            st.session_state.pop("rename_list", None)
+            st.success(f"{count} 社の会社名を修正しました！")
+            st.rerun()
+
+# ═══════════════════════════════════════════════════
 # 検索 & 会社一覧
 # ═══════════════════════════════════════════════════
 search_query = st.text_input("🔍 会社名で検索", placeholder="検索...", label_visibility="collapsed")
