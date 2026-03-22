@@ -1,7 +1,6 @@
 import os
 import json
 from typing import Dict, List
-import anthropic
 import streamlit as st
 
 
@@ -19,7 +18,9 @@ def get_api_key() -> str:
     return key
 
 
-def get_client() -> anthropic.Anthropic:
+def get_client():
+    """anthropicは必要な時だけインポート（起動高速化）"""
+    import anthropic
     return anthropic.Anthropic(api_key=get_api_key())
 
 
