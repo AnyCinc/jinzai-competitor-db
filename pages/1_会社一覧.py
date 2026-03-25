@@ -260,7 +260,10 @@ else:
                             st.rerun()
 
             # アップロードキーをセッションで管理（重複防止）
-            upload_key = f"upload_{co['id']}_{st.session_state.get(f'upload_counter_{co[\"id\"]}', 0)}"
+            company_id = co["id"]
+            counter_key = f"upload_counter_{company_id}"
+            counter = st.session_state.get(counter_key, 0)
+            upload_key = f"upload_{company_id}_{counter}"
             uploaded = st.file_uploader(
                 "ファイルをアップロード",
                 type=["pdf", "mp4", "mov", "avi", "webm", "jpg", "jpeg", "png", "gif", "webp"],
@@ -268,11 +271,12 @@ else:
             )
             if uploaded:
                 # 同じファイルの重複登録を防ぐ
-                already_uploaded = st.session_state.get(f"last_upload_{co['id']}")
+                last_key = f"last_upload_{company_id}"
+                already_uploaded = st.session_state.get(last_key)
                 if already_uploaded != uploaded.name:
                     ext = os.path.splitext(uploaded.name)[1]
                     saved_name = f"{uuid.uuid4()}{ext}"
-                    company_dir = os.path.join(UPLOAD_DIR, str(co["id"]))
+                    company_dir = os.path.join(UPLOAD_DIR, str(company_id))
                     os.makedirs(company_dir, exist_ok=True)
                     file_path = os.path.join(company_dir, saved_name)
                     with open(file_path, "wb") as f:
@@ -287,7 +291,7 @@ else:
 
                     with get_db() as db:
                         db.add(CompanyFile(
-                            company_id=co["id"],
+                            company_id=company_id,
                             filename=saved_name,
                             original_name=uploaded.name,
                             file_type=file_type,
@@ -295,9 +299,8 @@ else:
                             size=uploaded.size,
                         ))
                         db.commit()
-                    st.session_state[f"last_upload_{co['id']}"] = uploaded.name
-                    # カウンターを更新してアップローダーをリセット
-                    st.session_state[f"upload_counter_{co['id']}"] = st.session_state.get(f"upload_counter_{co['id']}", 0) + 1
+                    st.session_state[last_key] = uploaded.name
+                    st.session_state[counter_key] = counter + 1
                     st.success(f"「{uploaded.name}」をアップロードしました")
                     st.rerun()
 
