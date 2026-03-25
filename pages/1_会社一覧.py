@@ -239,10 +239,20 @@ else:
             # ブロック3: 営業動画
             # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             st.markdown("### 🎥 営業動画")
+
+            # ファイルアップロードで直接再生
+            uploaded_video = st.file_uploader(
+                "動画ファイルをドラッグ&ドロップ",
+                type=["mp4", "mov", "avi", "webm"],
+                key=f"video_upload_{co['id']}",
+            )
+            if uploaded_video:
+                st.video(uploaded_video)
+
+            # 保存済みリンク一覧
             if co["videos"]:
                 for link_id, link_url, link_title, link_type, link_desc in co["videos"]:
                     display = link_title or "動画"
-                    st.markdown(f'**{display}**')
 
                     # YouTube埋め込み
                     yt_id = None
@@ -251,13 +261,10 @@ else:
                         yt_id = yt_match.group(1)
 
                     if yt_id:
+                        st.markdown(f'**{display}**')
                         st.markdown(f'<iframe width="100%" height="315" src="https://www.youtube.com/embed/{yt_id}" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
                     else:
-                        # YouTube以外はst.videoで試行、失敗時はリンク表示
-                        try:
-                            st.video(link_url)
-                        except Exception:
-                            st.markdown(f'🎥 <a href="{link_url}" target="_blank">{link_url}</a>', unsafe_allow_html=True)
+                        st.markdown(f'🎥 <a href="{link_url}" target="_blank">{display}</a>', unsafe_allow_html=True)
 
                     if st.button("✕ 削除", key=f"dv_{co['id']}_{link_id}"):
                         with get_db() as db:
@@ -266,16 +273,15 @@ else:
                                 db.delete(t)
                                 db.commit()
                         st.rerun()
-                    st.markdown("")
-            else:
-                st.caption("動画なし")
 
+            # YouTube URL追加
+            st.caption("YouTube URLで追加（永続保存）")
             vc1, vc2 = st.columns([3, 2])
             with vc1:
-                vid_url = st.text_input("動画URL", placeholder="YouTube / Google Drive等（ドラッグ&ドロップ可）", key=f"vu_{co['id']}")
+                vid_url = st.text_input("動画URL", placeholder="YouTube URL等", key=f"vu_{co['id']}")
             with vc2:
                 vid_title = st.text_input("タイトル", placeholder="例: 会社紹介動画", key=f"vt_{co['id']}")
-            if st.button("🎥 動画を追加", key=f"add_vid_{co['id']}"):
+            if st.button("🎥 URLを保存", key=f"add_vid_{co['id']}"):
                 if vid_url and vid_url.strip():
                     with get_db() as db:
                         db.add(CompanyLink(
