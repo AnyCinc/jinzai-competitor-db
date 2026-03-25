@@ -142,7 +142,6 @@ def inject_custom_css():
     /* Streamlit デフォルトUI調整 */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
     [data-testid="manage-app-button"] {display: none;}
     .stDeployButton {display: none;}
     [data-testid="stStatusWidget"] {display: none;}
