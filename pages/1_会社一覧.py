@@ -303,23 +303,43 @@ else:
             st.markdown("### 🤖 AI分析")
 
             if co["ai_summary"]:
-                st.markdown(f"""
-                <div class="ai-summary-box">
-                    <div class="label">✨ AI Analysis</div>
-                    <p>{co["ai_summary"]}</p>
-                </div>
-                """, unsafe_allow_html=True)
+                # ai_summaryがJSON文字列の場合、パースして整形表示
+                display_summary = co["ai_summary"]
+                display_strengths = co["strengths"]
+                display_weaknesses = co["weaknesses"]
+                display_advantages = co["hitokiwa_advantages"]
+
+                try:
+                    parsed = json.loads(co["ai_summary"])
+                    if isinstance(parsed, dict):
+                        display_summary = parsed.get("summary", "")
+                        if not display_strengths and parsed.get("strengths"):
+                            display_strengths = parsed["strengths"]
+                        if not display_weaknesses and parsed.get("weaknesses"):
+                            display_weaknesses = parsed["weaknesses"]
+                        if not display_advantages and parsed.get("hitokiwa_advantages"):
+                            display_advantages = parsed["hitokiwa_advantages"]
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+                if display_summary:
+                    st.markdown(f"""
+                    <div class="ai-summary-box">
+                        <div class="label">✨ AI Analysis</div>
+                        <p>{display_summary}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
                 col_s, col_w, col_a = st.columns(3)
                 with col_s:
                     st.markdown('<span style="color:#a5a39d;font-size:0.7em;letter-spacing:0.3em;">STRENGTHS</span>', unsafe_allow_html=True)
-                    render_strength_tags(co["strengths"])
+                    render_strength_tags(display_strengths)
                 with col_w:
                     st.markdown('<span style="color:#a5a39d;font-size:0.7em;letter-spacing:0.3em;">WEAKNESSES</span>', unsafe_allow_html=True)
-                    render_weakness_tags(co["weaknesses"])
+                    render_weakness_tags(display_weaknesses)
                 with col_a:
                     st.markdown('<span style="color:#a5a39d;font-size:0.7em;letter-spacing:0.3em;">ヒトキワで勝てるところ</span>', unsafe_allow_html=True)
-                    render_advantage_tags(co["hitokiwa_advantages"])
+                    render_advantage_tags(display_advantages)
 
             if co["hp_url"]:
                 if st.button("🤖 AI分析を実行", key=f"ai_{co['id']}"):
