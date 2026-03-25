@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 from contextlib import contextmanager
 
@@ -48,3 +48,15 @@ def init_db():
         os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
+    # 新カラムのマイグレーション
+    _migrate_columns(engine)
+
+
+def _migrate_columns(engine):
+    """既存テーブルに新しいカラムがなければ追加する"""
+    inspector = inspect(engine)
+    if "companies" in inspector.get_table_names():
+        columns = [col["name"] for col in inspector.get_columns("companies")]
+        with engine.begin() as conn:
+            if "hitokiwa_advantages" not in columns:
+                conn.execute(text("ALTER TABLE companies ADD COLUMN hitokiwa_advantages TEXT"))
