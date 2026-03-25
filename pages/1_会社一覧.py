@@ -213,23 +213,24 @@ else:
             else:
                 st.caption("営業資料なし")
 
-            with st.form(f"add_material_{co['id']}", clear_on_submit=True):
-                mc1, mc2 = st.columns([3, 2])
-                with mc1:
-                    mat_url = st.text_input("資料URL", placeholder="Google Drive共有リンク等", key=f"mu_{co['id']}")
-                with mc2:
-                    mat_title = st.text_input("タイトル", placeholder="例: 会社案内PDF", key=f"mt_{co['id']}")
-                if st.form_submit_button("📄 資料を追加"):
-                    if mat_url and mat_url.strip():
-                        with get_db() as db:
-                            db.add(CompanyLink(
-                                company_id=co["id"],
-                                url=mat_url.strip(),
-                                title=mat_title.strip() if mat_title else "営業資料",
-                                link_type="material",
-                            ))
-                            db.commit()
-                        st.rerun()
+            mc1, mc2 = st.columns([3, 2])
+            with mc1:
+                mat_url = st.text_input("資料URL", placeholder="Google Drive共有リンク等（ドラッグ&ドロップ可）", key=f"mu_{co['id']}")
+            with mc2:
+                mat_title = st.text_input("タイトル", placeholder="例: 会社案内PDF", key=f"mt_{co['id']}")
+            if st.button("📄 資料を追加", key=f"add_mat_{co['id']}"):
+                if mat_url and mat_url.strip():
+                    with get_db() as db:
+                        db.add(CompanyLink(
+                            company_id=co["id"],
+                            url=mat_url.strip(),
+                            title=mat_title.strip() if mat_title else "営業資料",
+                            link_type="material",
+                        ))
+                        db.commit()
+                    del st.session_state[f"mu_{co['id']}"]
+                    del st.session_state[f"mt_{co['id']}"]
+                    st.rerun()
 
             st.markdown("---")
 
@@ -254,23 +255,24 @@ else:
             else:
                 st.caption("動画なし")
 
-            with st.form(f"add_video_{co['id']}", clear_on_submit=True):
-                vc1, vc2 = st.columns([3, 2])
-                with vc1:
-                    vid_url = st.text_input("動画URL", placeholder="YouTube / Google Drive等", key=f"vu_{co['id']}")
-                with vc2:
-                    vid_title = st.text_input("タイトル", placeholder="例: 会社紹介動画", key=f"vt_{co['id']}")
-                if st.form_submit_button("🎥 動画を追加"):
-                    if vid_url and vid_url.strip():
-                        with get_db() as db:
-                            db.add(CompanyLink(
-                                company_id=co["id"],
-                                url=vid_url.strip(),
-                                title=vid_title.strip() if vid_title else "動画",
-                                link_type="youtube",
-                            ))
-                            db.commit()
-                        st.rerun()
+            vc1, vc2 = st.columns([3, 2])
+            with vc1:
+                vid_url = st.text_input("動画URL", placeholder="YouTube / Google Drive等（ドラッグ&ドロップ可）", key=f"vu_{co['id']}")
+            with vc2:
+                vid_title = st.text_input("タイトル", placeholder="例: 会社紹介動画", key=f"vt_{co['id']}")
+            if st.button("🎥 動画を追加", key=f"add_vid_{co['id']}"):
+                if vid_url and vid_url.strip():
+                    with get_db() as db:
+                        db.add(CompanyLink(
+                            company_id=co["id"],
+                            url=vid_url.strip(),
+                            title=vid_title.strip() if vid_title else "動画",
+                            link_type="youtube",
+                        ))
+                        db.commit()
+                    del st.session_state[f"vu_{co['id']}"]
+                    del st.session_state[f"vt_{co['id']}"]
+                    st.rerun()
 
             st.markdown("---")
 
