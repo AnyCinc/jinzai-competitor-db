@@ -150,7 +150,8 @@ else:
         with st.expander(f'{co["name"]}{ai_badge}', expanded=False):
             # ── 基本情報 ──
             if co["hp_url"]:
-                st.markdown(f'🔗 [{co["hp_url"]}]({co["hp_url"]})')
+                url = co["hp_url"]
+                st.markdown(f'🔗 <a href="{url}" target="_blank">{url}</a>', unsafe_allow_html=True)
             if co["description"]:
                 st.markdown(f'<p style="color:#6b6a65;font-size:0.9em;">{co["description"]}</p>', unsafe_allow_html=True)
 
@@ -205,7 +206,7 @@ else:
                     with col_link:
                         display = link_title or link_url
                         type_emoji = {"youtube": "🎥", "material": "📄", "sns": "💬", "hp": "🌐"}.get(link_type, "🔗")
-                        st.markdown(f"{type_emoji} [{display}]({link_url})")
+                        st.markdown(f'{type_emoji} <a href="{link_url}" target="_blank">{display}</a>', unsafe_allow_html=True)
                     with col_del:
                         if st.button("✕", key=f"dl_{co['id']}_{link_id}"):
                             with get_db() as db:
