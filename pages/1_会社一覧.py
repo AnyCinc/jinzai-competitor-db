@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+import re
 from datetime import datetime
 from lib.database import init_db, get_db
 from lib.models import Company, CompanyLink
@@ -240,18 +241,32 @@ else:
             st.markdown("### 🎥 営業動画")
             if co["videos"]:
                 for link_id, link_url, link_title, link_type, link_desc in co["videos"]:
-                    col_link, col_del = st.columns([5, 1])
-                    with col_link:
-                        display = link_title or "動画"
-                        st.markdown(f'🎥 <a href="{link_url}" target="_blank">{display}</a>', unsafe_allow_html=True)
-                    with col_del:
-                        if st.button("✕", key=f"dv_{co['id']}_{link_id}"):
-                            with get_db() as db:
-                                t = db.query(CompanyLink).filter(CompanyLink.id == link_id).first()
-                                if t:
-                                    db.delete(t)
-                                    db.commit()
-                            st.rerun()
+                    display = link_title or "動画"
+                    st.markdown(f'**{display}**')
+
+                    # YouTube埋め込み
+                    yt_id = None
+                    yt_match = re.search(r'(?:youtu\.be/|youtube\.com/(?:watch\?v=|embed/|shorts/))([a-zA-Z0-9_-]{11})', link_url)
+                    if yt_match:
+                        yt_id = yt_match.group(1)
+
+                    if yt_id:
+                        st.markdown(f'<iframe width="100%" height="315" src="https://www.youtube.com/embed/{yt_id}" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
+                    else:
+                        # YouTube以外はst.videoで試行、失敗時はリンク表示
+                        try:
+                            st.video(link_url)
+                        except Exception:
+                            st.markdown(f'🎥 <a href="{link_url}" target="_blank">{link_url}</a>', unsafe_allow_html=True)
+
+                    if st.button("✕ 削除", key=f"dv_{co['id']}_{link_id}"):
+                        with get_db() as db:
+                            t = db.query(CompanyLink).filter(CompanyLink.id == link_id).first()
+                            if t:
+                                db.delete(t)
+                                db.commit()
+                        st.rerun()
+                    st.markdown("")
             else:
                 st.caption("動画なし")
 
