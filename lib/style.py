@@ -53,6 +53,15 @@ def inject_custom_css():
         background: #faf5ef;
         font-size: 0.85em;
     }
+    .advantage-tag {
+        display: inline-block;
+        padding: 4px 14px;
+        margin: 3px 4px 3px 0;
+        border: 1px solid #b8c2d4;
+        color: #3a4f6b;
+        background: #f0f3f8;
+        font-size: 0.85em;
+    }
 
     /* 会社カード */
     .company-card {
@@ -192,6 +201,15 @@ def render_weakness_tags(items):
         st.markdown('<span style="color:#a5a39d;font-size:0.85em;">未登録</span>', unsafe_allow_html=True)
         return
     html = " ".join(f'<span class="weakness-tag">{item}</span>' for item in items)
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def render_advantage_tags(items):
+    """ヒトキワ優位タグをHTMLで表示"""
+    if not items:
+        st.markdown('<span style="color:#a5a39d;font-size:0.85em;">未登録</span>', unsafe_allow_html=True)
+        return
+    html = " ".join(f'<span class="advantage-tag">{item}</span>' for item in items)
     st.markdown(html, unsafe_allow_html=True)
 
 

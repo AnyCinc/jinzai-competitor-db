@@ -14,6 +14,7 @@ class Company(Base):
     description = Column(Text)
     strengths = Column(Text)    # JSON配列文字列
     weaknesses = Column(Text)   # JSON配列文字列
+    hitokiwa_advantages = Column(Text)  # JSON配列文字列 — ヒトキワで勝てるところ
     notes = Column(Text)
     ai_summary = Column(Text)
     status = Column(String(50), default="active")
