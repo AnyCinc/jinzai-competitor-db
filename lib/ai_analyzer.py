@@ -5,16 +5,26 @@ import streamlit as st
 
 
 def get_api_key() -> str:
-    """Streamlit secrets → 環境変数の順でAPIキーを取得"""
+    """設定ファイル → Streamlit secrets → 環境変数の順でAPIキーを取得"""
+    # 1. 設定ファイルから
+    settings_file = os.path.join("data", "settings.json")
+    if os.path.exists(settings_file):
+        with open(settings_file, "r") as f:
+            settings = json.load(f)
+            key = settings.get("ANTHROPIC_API_KEY", "")
+            if key:
+                return key
+    # 2. Streamlit secrets
     try:
         key = st.secrets.get("ANTHROPIC_API_KEY", "")
         if key:
             return key
     except FileNotFoundError:
         pass
+    # 3. 環境変数
     key = os.getenv("ANTHROPIC_API_KEY", "")
     if not key:
-        raise ValueError("ANTHROPIC_API_KEY が設定されていません。設定画面でAPIキーを登録してください。")
+        raise ValueError("ANTHROPIC_API_KEY が設定されていません。左メニューの「設定」からAPIキーを登録してください。")
     return key
 
 

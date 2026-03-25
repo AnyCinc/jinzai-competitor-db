@@ -9,7 +9,15 @@ def _get_password_hash(password: str) -> str:
 
 
 def _get_correct_password() -> str:
-    """設定されたパスワードを取得（secrets → 環境変数）"""
+    """設定されたパスワードを取得（設定ファイル → secrets → 環境変数）"""
+    import json
+    settings_file = os.path.join("data", "settings.json")
+    if os.path.exists(settings_file):
+        with open(settings_file, "r") as f:
+            settings = json.load(f)
+            pw = settings.get("APP_PASSWORD", "")
+            if pw:
+                return pw
     try:
         return st.secrets.get("APP_PASSWORD", "")
     except FileNotFoundError:
