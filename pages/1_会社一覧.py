@@ -259,39 +259,47 @@ else:
                                     db.commit()
                             st.rerun()
 
+            # アップロードキーをセッションで管理（重複防止）
+            upload_key = f"upload_{co['id']}_{st.session_state.get(f'upload_counter_{co[\"id\"]}', 0)}"
             uploaded = st.file_uploader(
                 "ファイルをアップロード",
                 type=["pdf", "mp4", "mov", "avi", "webm", "jpg", "jpeg", "png", "gif", "webp"],
-                key=f"upload_{co['id']}",
+                key=upload_key,
             )
             if uploaded:
-                ext = os.path.splitext(uploaded.name)[1]
-                saved_name = f"{uuid.uuid4()}{ext}"
-                company_dir = os.path.join(UPLOAD_DIR, str(co["id"]))
-                os.makedirs(company_dir, exist_ok=True)
-                file_path = os.path.join(company_dir, saved_name)
-                with open(file_path, "wb") as f:
-                    f.write(uploaded.getvalue())
+                # 同じファイルの重複登録を防ぐ
+                already_uploaded = st.session_state.get(f"last_upload_{co['id']}")
+                if already_uploaded != uploaded.name:
+                    ext = os.path.splitext(uploaded.name)[1]
+                    saved_name = f"{uuid.uuid4()}{ext}"
+                    company_dir = os.path.join(UPLOAD_DIR, str(co["id"]))
+                    os.makedirs(company_dir, exist_ok=True)
+                    file_path = os.path.join(company_dir, saved_name)
+                    with open(file_path, "wb") as f:
+                        f.write(uploaded.getvalue())
 
-                content_type = uploaded.type or ""
-                file_type = "other"
-                for prefix, ft in {"application/pdf": "pdf", "video/": "video", "image/": "image"}.items():
-                    if content_type.startswith(prefix):
-                        file_type = ft
-                        break
+                    content_type = uploaded.type or ""
+                    file_type = "other"
+                    for prefix, ft in {"application/pdf": "pdf", "video/": "video", "image/": "image"}.items():
+                        if content_type.startswith(prefix):
+                            file_type = ft
+                            break
 
-                with get_db() as db:
-                    db.add(CompanyFile(
-                        company_id=co["id"],
-                        filename=saved_name,
-                        original_name=uploaded.name,
-                        file_type=file_type,
-                        file_path=file_path,
-                        size=uploaded.size,
-                    ))
-                    db.commit()
-                st.success(f"「{uploaded.name}」をアップロードしました")
-                st.rerun()
+                    with get_db() as db:
+                        db.add(CompanyFile(
+                            company_id=co["id"],
+                            filename=saved_name,
+                            original_name=uploaded.name,
+                            file_type=file_type,
+                            file_path=file_path,
+                            size=uploaded.size,
+                        ))
+                        db.commit()
+                    st.session_state[f"last_upload_{co['id']}"] = uploaded.name
+                    # カウンターを更新してアップローダーをリセット
+                    st.session_state[f"upload_counter_{co['id']}"] = st.session_state.get(f"upload_counter_{co['id']}", 0) + 1
+                    st.success(f"「{uploaded.name}」をアップロードしました")
+                    st.rerun()
 
             st.markdown("---")
 
